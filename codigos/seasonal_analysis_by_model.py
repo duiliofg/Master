@@ -73,12 +73,13 @@ merged_df = future_df.join(reference_df, lsuffix='_future', rsuffix='_ref')
 
 # Calcular diferencias absolutas y relativas con error propagado
 merged_df["Diff_Abs"] = (merged_df["Mean_future"] - merged_df["Mean_ref"]).round(2)
+merged_df["Error_Abs"] = ((merged_df["Std_future"] ** 2 + merged_df["Std_ref"] ** 2) ** 0.5).round(2)
 merged_df["Diff_Rel"] = ((merged_df["Diff_Abs"] / merged_df["Mean_ref"]) * 100).round(2)
-merged_df["Error_Prop"] = ((merged_df["Std_future"] ** 2 + merged_df["Std_ref"] ** 2) ** 0.5).round(2)
+merged_df["Error_Rel"] = ((merged_df["Error_Abs"] / merged_df["Mean_ref"]) * 100).round(2)
 
 # Formatear los valores con error como ±
-merged_df["Diff_Abs"] = merged_df["Diff_Abs"].astype(str) + " ± " + merged_df["Error_Prop"].astype(str)
-merged_df["Diff_Rel"] = merged_df["Diff_Rel"].astype(str) + " ± " + merged_df["Error_Prop"].astype(str)
+merged_df["Diff_Abs"] = merged_df["Diff_Abs"].astype(str) + " ± " + merged_df["Error_Abs"].astype(str)
+merged_df["Diff_Rel"] = merged_df["Diff_Rel"].astype(str) + " ± " + merged_df["Error_Rel"].astype(str)
 
 # Resetear el índice para visualización
 diff_df = merged_df.reset_index()
