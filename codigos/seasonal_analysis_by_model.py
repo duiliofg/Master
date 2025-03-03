@@ -46,40 +46,50 @@ for model, df in dfs.items():
         Std=("Std", "mean")  # Se mantiene el promedio de la desviación estándar
     ).reset_index()
     
+    # Redondear los valores a dos decimales
+    grouped["Mean"] = grouped["Mean"].round(2)
+    grouped["Std"] = grouped["Std"].round(2)
+    
     # Asignar el modelo y el nombre de la cuenca
     grouped["Model"] = model
     grouped["Cuenca"] = grouped["COD_CUEN"].map(cuencas)
+    grouped.drop(columns=["COD_CUEN"], inplace=True)  # Eliminar el código de cuenca
     
     seasonal_data.append(grouped)
 
 # Concatenar todos los datos procesados en un solo DataFrame
 final_df = pd.concat(seasonal_data, ignore_index=True)
 
-# Mostrar la tabla final con los valores estacionales
-print("Datos Estacionales por Cuenca y Modelo:")
-print(final_df.head())
-
 # Calcular diferencias relativas y absolutas con propagación de errores
 
 # Filtrar la referencia (1980-2020)
-reference_df = final_df[final_df["Decade"] == "1980-2020"].set_index(["COD_CUEN", "Season", "Model"])
+reference_df = final_df[final_df["Decade"] == "1980-2020"].set_index(["Cuenca", "Season", "Model"])
 
 # Filtrar las décadas futuras
-future_df = final_df[final_df["Decade"] != "1980-2020"].set_index(["COD_CUEN", "Season", "Model"])
+future_df = final_df[final_df["Decade"] != "1980-2020"].set_index(["Cuenca", "Season", "Model"])
 
 # Hacer merge entre los valores de referencia y los futuros
 merged_df = future_df.join(reference_df, lsuffix='_future', rsuffix='_ref')
 
-# Calcular diferencias absolutas y relativas
-merged_df["Diff_Abs"] = merged_df["Mean_future"] - merged_df["Mean_ref"]
-merged_df["Diff_Rel"] = (merged_df["Diff_Abs"] / merged_df["Mean_ref"]) * 100
+# Calcular diferencias absolutas y relativas con error propagado
+merged_df["Diff_Abs"] = (merged_df["Mean_future"] - merged_df["Mean_ref"]).round(2)
+merged_df["Diff_Rel"] = ((merged_df["Diff_Abs"] / merged_df["Mean_ref"]) * 100).round(2)
+merged_df["Error_Prop"] = ((merged_df["Std_future"] ** 2 + merged_df["Std_ref"] ** 2) ** 0.5).round(2)
 
-# Calcular la propagación de errores
-merged_df["Error_Prop"] = ((merged_df["Std_future"] ** 2 + merged_df["Std_ref"] ** 2) ** 0.5)
+# Formatear los valores con error como ±
+merged_df["Diff_Abs"] = merged_df["Diff_Abs"].astype(str) + " ± " + merged_df["Error_Prop"].astype(str)
+merged_df["Diff_Rel"] = merged_df["Diff_Rel"].astype(str) + " ± " + merged_df["Error_Prop"].astype(str)
 
 # Resetear el índice para visualización
 diff_df = merged_df.reset_index()
 
-# Mostrar la tabla con las diferencias relativas y absolutas
-print("Diferencias Relativas y Absolutas por Cuenca y Modelo:")
-print(diff_df.head())
+# Generar tabla en formato LaTeX
+latex_table = diff_df.to_latex(index=False, escape=False)
+
+# Guardar tabla LaTeX en un archivo
+table_path = "/mnt/data/diferencias_cuencas_modelos.tex"
+with open(table_path, "w") as f:
+    f.write(latex_table)
+
+# Mostrar la ruta del archivo generado
+print(f"La tabla LaTeX ha sido guardada en: {table_path}")
