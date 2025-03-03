@@ -83,13 +83,14 @@ merged_df["Diff_Rel"] = merged_df["Diff_Rel"].astype(str) + " ± " + merged_df["
 # Resetear el índice para visualización
 diff_df = merged_df.reset_index()
 
-# Generar tabla en formato LaTeX
-latex_table = diff_df.to_latex(index=False, escape=False)
-
-# Guardar tabla LaTeX en un archivo
-table_path = "/mnt/data/diferencias_cuencas_modelos.tex"
-with open(table_path, "w") as f:
-    f.write(latex_table)
-
-# Mostrar la ruta del archivo generado
-print(f"La tabla LaTeX ha sido guardada en: {table_path}")
+# Generar tablas en formato LaTeX separadas por cuenca
+for cuenca in cuencas.values():
+    cuenca_df = diff_df[diff_df["Cuenca"] == cuenca]
+    latex_table = cuenca_df.to_latex(index=False, escape=False)
+    
+    # Guardar tabla LaTeX en un archivo separado por cuenca
+    table_path = f"/mnt/data/diferencias_{cuenca.replace(' ', '_').lower()}.tex"
+    with open(table_path, "w") as f:
+        f.write(latex_table)
+    
+    print(f"Tabla LaTeX generada para {cuenca}: {table_path}")
