@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import os
 import calendar
-from itertools import product
 
 # === Paths reales
 base_path = '/media/duilio/8277-C610/OGGM/insumos/CHELSA/clipped_version'
@@ -27,7 +26,7 @@ for basin in basins:
     hist_tas = xr.open_dataset(base_file_tas)
 
     precip_hist = hist_pr['prcp'].mean(dim=('lat', 'lon'))
-    temp_hist = hist_tas['temp'].mean(dim=('lat', 'lon'))
+    temp_hist = hist_tas['temp'].mean(dim=('lat', 'lon'))  # !! en °C ya
 
     precip_hist_annual = precip_hist.resample(time='A').sum()
     temp_hist_annual = temp_hist.resample(time='A').mean()
@@ -36,7 +35,7 @@ for basin in basins:
     temp_hist_period = temp_hist_annual.sel(time=slice('1980-01-01', '2010-12-31'))
 
     precip_hist_mean_value = precip_hist_period.mean().item()
-    temp_hist_mean_value = temp_hist_period.mean().item() - 273.15
+    temp_hist_mean_value = temp_hist_period.mean().item()
 
     # --- Buscar futuros asociados al basin
     futuros_basin_pr = [f for f in os.listdir(futuro_path) if basin in f and f.endswith('.nc') and 'PP_CHELSA' in f]
@@ -77,9 +76,12 @@ for basin in basins:
         fut = xr.open_dataset(futuro_full_path)
         temp_futuro_raw = fut['tas'].mean(dim=('lat', 'lon'))
 
-        temp_futuro_annual = temp_futuro_raw.resample(time='A').mean()
+        # === Importante: Convertir de K a °C
+        temp_futuro_raw_celsius = temp_futuro_raw - 273.15
+
+        temp_futuro_annual = temp_futuro_raw_celsius.resample(time='A').mean()
         temp_futuro_period = temp_futuro_annual.sel(time=slice('2030-01-01', '2060-12-31'))
-        temp_futuro_mean_value = temp_futuro_period.mean().item() - 273.15
+        temp_futuro_mean_value = temp_futuro_period.mean().item()
 
         anomaly_abs = temp_futuro_mean_value - temp_hist_mean_value
         anomaly_perc = anomaly_abs / temp_hist_mean_value
@@ -103,8 +105,8 @@ resultados_pr_df = pd.DataFrame(resultados_pr)
 resultados_tas_df = pd.DataFrame(resultados_tas)
 
 # Guardar completos
-resultados_pr_df.to_csv(os.path.join(salida_path, 'cmip6_chelsa_anomalias_pr_broad.csv'), index=False)
-resultados_tas_df.to_csv(os.path.join(salida_path, 'cmip6_chelsa_anomalias_tas_broad.csv'), index=False)
+resultados_pr_df.to_csv(os.path.join(salida_path, 'cmip6_chelsa_anomalias_pr.csv'), index=False)
+resultados_tas_df.to_csv(os.path.join(salida_path, 'cmip6_chelsa_anomalias_tas.csv'), index=False)
 
 # Guardar versión broad agrupada
 resultados_pr_broad = resultados_pr_df.groupby(['basin', 'ssp_list']).agg(
@@ -124,6 +126,4 @@ resultados_tas_broad = resultados_tas_df.groupby(['basin', 'ssp_list']).agg(
 resultados_pr_broad.to_csv(os.path.join(salida_path, 'cmip6_chelsa_anomalias_pr_broad_summary.csv'), index=False)
 resultados_tas_broad.to_csv(os.path.join(salida_path, 'cmip6_chelsa_anomalias_tas_broad_summary.csv'), index=False)
 
-print("✅ Resultados de precipitacion y temperatura guardados correctamente, incluyendo version broad.")
-
-a este codigo le falta la conversion de K a C 
+print("✅ Resultados de precipitación y temperatura guardados correctamente, incluyendo versión broad.")
